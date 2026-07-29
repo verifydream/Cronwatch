@@ -1,0 +1,18 @@
+# Cronwatch Configuration
+telegram_bot_token: ""
+telegram_chat_id: ""
+webhook_url: ""
+
+# Monitoring
+poll_interval_sec: 60
+alert_cooldown_sec: 3600
+
+# Anomaly detection
+zscore_threshold: 3.0
+baseline_min_samples: 10
+
+# Storage
+db_path: "cronwatch.db"
+
+# Logging
+log_level: "info"

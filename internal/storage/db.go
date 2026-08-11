@@ -122,6 +122,9 @@ func (s *Store) GetRecentStats(jobName string, limit int) (avg float64, stddev f
 		}
 		durations = append(durations, float64(d))
 	}
+	if err = rows.Err(); err != nil {
+		return
+	}
 
 	count = len(durations)
 	if count == 0 {
@@ -154,5 +157,8 @@ func scanRuns(rows *sql.Rows) ([]Run, error) {
 		}
 		runs = append(runs, r)
 	}
-	return runs, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return runs, nil
 }

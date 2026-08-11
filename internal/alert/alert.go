@@ -2,6 +2,7 @@ package alert
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,16 +26,29 @@ func (t *TelegramSender) Send(message string) error {
 		return nil
 	}
 
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.token)
-	payload := fmt.Sprintf(`{"chat_id":"%s","text":"%s","parse_mode":"Markdown"}`, t.chatID, message)
+	payload, err := json.Marshal(map[string]string{
+		"chat_id":    t.chatID,
+		"text":       message,
+		"parse_mode": "Markdown",
+	})
+	if err != nil {
+		return err
+	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBufferString(payload))
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.token)
+	resp, err := http.Post(url, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		t.log.Error().Err(err).Msg("Failed to send Telegram message")
 		return err
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		err := fmt.Errorf("telegram API returned %s", resp.Status)
+		t.log.Error().Err(err).Msg("Failed to send Telegram message")
+		return err
+	}
 	return nil
 }
 
@@ -52,13 +66,22 @@ func (w *WebhookSender) Send(message string) error {
 		return nil
 	}
 
-	payload := fmt.Sprintf(`{"text":"%s"}`, message)
-	resp, err := http.Post(w.url, "application/json", bytes.NewBufferString(payload))
+	payload, err := json.Marshal(map[string]string{"text": message})
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(w.url, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		w.log.Error().Err(err).Msg("Failed to send webhook")
 		return err
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode >= 300 {
+		err := fmt.Errorf("webhook returned %s", resp.Status)
+		w.log.Error().Err(err).Msg("Failed to send webhook")
+		return err
+	}
 	return nil
 }

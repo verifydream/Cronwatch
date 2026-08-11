@@ -5,6 +5,7 @@ import (
 	"context"
 	"os/exec"
 	"time"
+	"unicode/utf8"
 )
 
 type Result struct {
@@ -48,8 +49,20 @@ func Run(ctx context.Context, job Job) Result {
 }
 
 func truncate(s string, max int) string {
-	if len(s) > max {
-		return s[:max] + "...[truncated]"
+	if len(s) <= max {
+		return s
 	}
-	return s
+	cut := s[:max]
+	// Don't split a UTF-8 rune — drop incomplete trailing rune
+	for len(cut) > 0 && !utf8.RuneStart(cut[len(cut)-1]) {
+		cut = cut[:len(cut)-1]
+	}
+	// Now trim the last rune if it's incomplete (RuneStart byte not followed by full rune)
+	if len(cut) > 0 {
+		r, size := utf8.DecodeLastRuneInString(cut)
+		if r == utf8.RuneError && size <= 1 {
+			cut = cut[:len(cut)-1]
+		}
+	}
+	return cut + "...[truncated]"
 }

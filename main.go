@@ -133,7 +133,9 @@ func runRetry(cmd *cobra.Command, args []string) error {
 	defer store.Close()
 
 	var runID int64
-	fmt.Sscanf(args[0], "%d", &runID)
+	if _, err := fmt.Sscanf(args[0], "%d", &runID); err != nil || runID <= 0 {
+		return fmt.Errorf("invalid run ID: %s", args[0])
+	}
 	run, err := store.GetRun(runID)
 	if err != nil {
 		return fmt.Errorf("run not found: %w", err)
